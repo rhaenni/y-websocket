@@ -30,7 +30,8 @@
     ".": {
       "import": "./src/y-websocket.js",
       "require": "./dist/y-websocket.cjs"
-    }
+    },
+    "./dist/y-websocket.cjs": "./dist/y-websocket.cjs"
   },
   "repository": {
     "type": "git",
