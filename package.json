@@ -12,7 +12,7 @@
   },
   "scripts": {
     "start": "node ./bin/server.js",
-    "dist": "rm -rf dist && rollup -c && tsc",
+    "dist": "rollup -c && tsc",
     "lint": "standard && tsc",
     "test": "npm run lint",
     "preversion": "npm run lint && npm run dist && test -e dist/src/y-websocket.d.ts && test -e dist/y-websocket.cjs"
@@ -61,10 +61,10 @@
     "rollup-cli": "^1.0.9",
     "standard": "^12.0.1",
     "typescript": "^3.9.9",
-    "yjs": "^13.5.0"
+    "yjs": "npm:type-created-yjs@13.5.11"
   },
   "peerDependencies": {
-    "yjs": "^13.5.6"
+    "yjs": "npm:type-created-yjs@13.5.11"
   },
   "optionalDependencies": {
     "ws": "^6.2.1",
