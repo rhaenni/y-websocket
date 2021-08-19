@@ -21,15 +21,17 @@ export class WebsocketProvider extends Observable<string> {
      * @param {awarenessProtocol.Awareness} [opts.awareness]
      * @param {Object<string,string>} [opts.params]
      * @param {typeof WebSocket} [opts.WebSocketPolyfill] Optionall provide a WebSocket polyfill
+     * @param {string} [opts.auth] Optionally provide auth information to pass through to the server in Sec-WebSocket-Protocol header
      * @param {number} [opts.resyncInterval] Request server state every `resyncInterval` milliseconds
      */
-    constructor(serverUrl: string, roomname: string, doc: Y.Doc, { connect, awareness, params, WebSocketPolyfill, resyncInterval }?: {
+    constructor(serverUrl: string, roomname: string, doc: Y.Doc, { connect, awareness, params, WebSocketPolyfill, resyncInterval, auth }?: {
         connect?: boolean;
         awareness?: awarenessProtocol.Awareness;
         params?: {
             [x: string]: string;
         };
         WebSocketPolyfill?: typeof WebSocket;
+        auth?: string;
         resyncInterval?: number;
     } | undefined);
     bcChannel: string;
@@ -44,6 +46,7 @@ export class WebsocketProvider extends Observable<string> {
         readonly CONNECTING: number;
         readonly OPEN: number;
     };
+    auth: string;
     awareness: awarenessProtocol.Awareness;
     wsconnected: boolean;
     wsconnecting: boolean;

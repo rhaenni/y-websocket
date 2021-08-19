@@ -86,7 +86,7 @@ const readMessage = (provider, buf, emitSynced) => {
  */
 const setupWS = provider => {
   if (provider.shouldConnect && provider.ws === null) {
-    const websocket = new provider._WS(provider.url);
+    const websocket = new provider._WS(provider.url, provider.auth);
     websocket.binaryType = 'arraybuffer';
     provider.ws = websocket;
     provider.wsconnecting = true;
@@ -186,10 +186,12 @@ class WebsocketProvider extends observable.Observable {
    * @param {awarenessProtocol.Awareness} [opts.awareness]
    * @param {Object<string,string>} [opts.params]
    * @param {typeof WebSocket} [opts.WebSocketPolyfill] Optionall provide a WebSocket polyfill
+   * @param {string} [opts.auth] Optionally provide auth information to pass through to the server in Sec-WebSocket-Protocol header
    * @param {number} [opts.resyncInterval] Request server state every `resyncInterval` milliseconds
    */
-  constructor (serverUrl, roomname, doc, { connect = true, awareness = new awarenessProtocol.Awareness(doc), params = {}, WebSocketPolyfill = WebSocket, resyncInterval = -1 } = {}) {
+  constructor (serverUrl, roomname, doc, { connect = true, awareness = new awarenessProtocol.Awareness(doc), params = {}, WebSocketPolyfill = WebSocket, resyncInterval = -1, auth } = {}) {
     super();
+    console.log('WORKED');
     // ensure that url is always ends with /
     while (serverUrl[serverUrl.length - 1] === '/') {
       serverUrl = serverUrl.slice(0, serverUrl.length - 1);
@@ -200,6 +202,7 @@ class WebsocketProvider extends observable.Observable {
     this.roomname = roomname;
     this.doc = doc;
     this._WS = WebSocketPolyfill;
+    this.auth = auth;
     this.awareness = awareness;
     this.wsconnected = false;
     this.wsconnecting = false;
