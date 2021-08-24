@@ -19,6 +19,9 @@ const wsReadyStateConnecting = 0
 const wsReadyStateOpen = 1
 const wsReadyStateClosing = 2 // eslint-disable-line
 const wsReadyStateClosed = 3 // eslint-disable-line
+const WEBSOCKET_AUTH_FAILED = 4000;
+
+const jwt = require('jsonwebtoken')
 
 // disable gc when using snapshots!
 const gcEnabled = process.env.GC !== 'false' && process.env.GC !== '0'
@@ -183,8 +186,9 @@ const messageListener = (conn, doc, message) => {
 /**
  * @param {WSSharedDoc} doc
  * @param {any} conn
+ * @param {any} code
  */
-const closeConn = (doc, conn) => {
+const closeConn = (doc, conn, code=1005) => { // websocket default close code
   if (doc.conns.has(conn)) {
     /**
      * @type {Set<number>}
@@ -201,7 +205,7 @@ const closeConn = (doc, conn) => {
       docs.delete(doc.name)
     }
   }
-  conn.close()
+  conn.close(code)
 }
 
 /**
@@ -231,6 +235,29 @@ exports.setupWSConnection = (conn, req, { docName = req.url.slice(1).split('?')[
   conn.binaryType = 'arraybuffer'
   // get doc, initialize if it does not exist yet
   const doc = getYDoc(docName, gc)
+  console.log('doc SIZE: ', doc.share.size)
+  console.log('doc: ', doc)
+  let owners=null
+  if (doc.share.size>0) { // doc.get('owners') <-- this will create a new owners key which we don't want, tbd how to properly check for key existance without creating it
+    // doc.share.size===0 means the doc is empty and so owners key is not set in which case we allow access
+    owners=doc.getArray('owners')
+    //console.log('Owners: ', doc, doc.get('owners').toJSON())\
+    // console.log('reqh4eader', req.headers)
+    const token=req.headers['sec-websocket-protocol']
+    let owner=null
+    if (token) {
+      // get uid (owner) from token
+      let decoded = jwt.verify(token, 'shhhhh');
+      console.log('decoded2', decoded)
+      owner=decoded.uid   
+    }
+    // console.log('uuid & owners:', Array.from(owners), owner, (Array.from(owners).includes(owner)))
+    if (owners && !(Array.from(owners).includes(owner))) {
+      // client has no permission to access this doc as his uid is not in the owners array
+      closeConn(doc, conn, WEBSOCKET_AUTH_FAILED)
+    }
+    
+  }
   doc.conns.set(conn, new Set())
   // listen and reply to events
   conn.on('message', /** @param {ArrayBuffer} message */ message => messageListener(conn, doc, new Uint8Array(message)))

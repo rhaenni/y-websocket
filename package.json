@@ -31,7 +31,8 @@
       "import": "./src/y-websocket.js",
       "require": "./dist/y-websocket.cjs"
     },
-    "./dist/y-websocket.cjs": "./dist/y-websocket.cjs"
+    "./dist/y-websocket.cjs": "./dist/y-websocket.cjs",
+    "./bin/utils.js": "./bin/utils.js"
   },
   "repository": {
     "type": "git",
@@ -53,6 +54,7 @@
     ]
   },
   "dependencies": {
+    "jsonwebtoken": "^8.5.1",
     "lib0": "^0.2.42",
     "lodash.debounce": "^4.0.8",
     "y-protocols": "^1.0.5"
