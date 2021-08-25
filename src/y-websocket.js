@@ -87,73 +87,90 @@ const readMessage = (provider, buf, emitSynced) => {
 /**
  * @param {WebsocketProvider} provider
  */
-const setupWS = provider => {
+ const setupWS = provider => {
   if (provider.shouldConnect && provider.ws === null) {
-    const websocket = new provider._WS(provider.url, provider.auth)
-    websocket.binaryType = 'arraybuffer'
-    provider.ws = websocket
-    provider.wsconnecting = true
-    provider.wsconnected = false
-    provider.synced = false
+    console.log("WS CONNECTING")
+   
 
-    websocket.onmessage = event => {
-      provider.wsLastMessageReceived = time.getUnixTime()
-      const encoder = readMessage(provider, new Uint8Array(event.data), true)
-      if (encoding.length(encoder) > 1) {
-        websocket.send(encoding.toUint8Array(encoder))
-      }
-    }
-    websocket.onclose = (e) => {
-      provider.ws = null
-      provider.wsconnecting = false
-      if (provider.wsconnected) {
-        provider.wsconnected = false
-        provider.synced = false
-        // update awareness (all users except local left)
-        awarenessProtocol.removeAwarenessStates(provider.awareness, Array.from(provider.awareness.getStates().keys()).filter(client => client !== provider.doc.clientID), provider)
+    let websocket
+    function start(auth) {
+      console.log("WS START")
+      websocket = new provider._WS(provider.url, auth ? auth : provider.auth);
+      websocket.binaryType = 'arraybuffer';
+      provider.ws = websocket;
+      provider.wsconnecting = true;
+      provider.wsconnected = false;
+      provider.synced = false;
+
+      websocket.onmessage = event => {
+        provider.wsLastMessageReceived = time.getUnixTime();
+        const encoder = readMessage(provider, new Uint8Array(event.data), true);
+        if (encoding.length(encoder) > 1) {
+          websocket.send(encoding.toUint8Array(encoder));
+        }
+      };
+      websocket.onclose = (e) => {
+        provider.ws = null;
+        provider.wsconnecting = false;
+        if (provider.wsconnected) {
+          provider.wsconnected = false;
+          provider.synced = false;
+          // update awareness (all users except local left)
+          awarenessProtocol.removeAwarenessStates(provider.awareness, Array.from(provider.awareness.getStates().keys()).filter(client => client !== provider.doc.clientID), provider);
+          provider.emit('status', [{
+            status: 'disconnected'
+          }]);
+        } else {
+          provider.wsUnsuccessfulReconnects++;
+        }
+        if(e.code === WEBSOCKET_AUTH_FAILED) { // websocket auth failed so return
+          console.log("Auth failed", e.code);
+          return;
+        }
+        // Start with no reconnect timeout and increase timeout by
+        // log10(wsUnsuccessfulReconnects).
+        // The idea is to increase reconnect timeout slowly and have no reconnect
+        // timeout at the beginning (log(1) = 0)
+        setTimeout(setupWS, math.min(math.log10(provider.wsUnsuccessfulReconnects + 1) * reconnectTimeoutBase, maxReconnectTimeout), provider);
+      };
+      websocket.onopen = () => {
+        provider.wsLastMessageReceived = time.getUnixTime();
+        provider.wsconnecting = false;
+        provider.wsconnected = true;
+        provider.wsUnsuccessfulReconnects = 0;
         provider.emit('status', [{
-          status: 'disconnected'
-        }])
-      } else {
-        provider.wsUnsuccessfulReconnects++
-      }
-      if(e.code === WEBSOCKET_AUTH_FAILED) { // websocket auth failed so return
-        console.log("Auth failed", e.code);
-        return;
-      }
-      // Start with no reconnect timeout and increase timeout by
-      // log10(wsUnsuccessfulReconnects).
-      // The idea is to increase reconnect timeout slowly and have no reconnect
-      // timeout at the beginning (log(1) = 0)
-      setTimeout(setupWS, math.min(math.log10(provider.wsUnsuccessfulReconnects + 1) * reconnectTimeoutBase, maxReconnectTimeout), provider)
+          status: 'connected'
+        }]);
+        // always send sync step 1 when connected
+        const encoder = encoding.createEncoder();
+        encoding.writeVarUint(encoder, messageSync);
+        syncProtocol.writeSyncStep1(encoder, provider.doc);
+        websocket.send(encoding.toUint8Array(encoder));
+        // broadcast local awareness state
+        if (provider.awareness.getLocalState() !== null) {
+          const encoderAwarenessState = encoding.createEncoder();
+          encoding.writeVarUint(encoderAwarenessState, messageAwareness);
+          encoding.writeVarUint8Array(encoderAwarenessState, awarenessProtocol.encodeAwarenessUpdate(provider.awareness, [provider.doc.clientID]));
+          websocket.send(encoding.toUint8Array(encoderAwarenessState));
+        }
+      };
     }
-    websocket.onopen = () => {
-      provider.wsLastMessageReceived = time.getUnixTime()
-      provider.wsconnecting = false
-      provider.wsconnected = true
-      provider.wsUnsuccessfulReconnects = 0
-      provider.emit('status', [{
-        status: 'connected'
-      }])
-      // always send sync step 1 when connected
-      const encoder = encoding.createEncoder()
-      encoding.writeVarUint(encoder, messageSync)
-      syncProtocol.writeSyncStep1(encoder, provider.doc)
-      websocket.send(encoding.toUint8Array(encoder))
-      // broadcast local awareness state
-      if (provider.awareness.getLocalState() !== null) {
-        const encoderAwarenessState = encoding.createEncoder()
-        encoding.writeVarUint(encoderAwarenessState, messageAwareness)
-        encoding.writeVarUint8Array(encoderAwarenessState, awarenessProtocol.encodeAwarenessUpdate(provider.awareness, [provider.doc.clientID]))
-        websocket.send(encoding.toUint8Array(encoderAwarenessState))
-      }
+
+    if (provider.auth && typeof provider.auth === 'function') {
+      console.log("WS CALL AUTH FUNCTION")
+      // @ts-ignore
+      provider.auth(start)
+    } else {
+      start()
     }
 
     provider.emit('status', [{
       status: 'connecting'
-    }])
+    }]);
+
+    
   }
-}
+};
 
 /**
  * @param {WebsocketProvider} provider

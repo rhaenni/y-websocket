@@ -235,8 +235,8 @@ exports.setupWSConnection = (conn, req, { docName = req.url.slice(1).split('?')[
   conn.binaryType = 'arraybuffer'
   // get doc, initialize if it does not exist yet
   const doc = getYDoc(docName, gc)
-  console.log('doc SIZE: ', doc.share.size)
-  console.log('doc: ', doc)
+  //console.log('doc SIZE: ', doc.share.size)
+  //console.log('doc: ', doc)
   let owners=null
   if (doc.share.size>0) { // doc.get('owners') <-- this will create a new owners key which we don't want, tbd how to properly check for key existance without creating it
     // doc.share.size===0 means the doc is empty and so owners key is not set in which case we allow access
